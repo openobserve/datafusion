@@ -109,6 +109,8 @@ pub struct GroupedHashAggregateStream {
 
     /// Execution metrics
     baseline_metrics: BaselineMetrics,
+
+    total_times: i64,
 }
 
 impl GroupedHashAggregateStream {
@@ -160,6 +162,7 @@ impl GroupedHashAggregateStream {
             exec_state,
             baseline_metrics,
             input_done: false,
+            total_times: 0,
         })
     }
 
@@ -191,6 +194,7 @@ pub(crate) fn create_group_accumulator(
 impl GroupedHashAggregateStream {
     /// Perform group-by aggregation for the given [`RecordBatch`].
     pub fn group_aggregate_batch(&mut self, batch: RecordBatch) -> Result<()> {
+        let start_time = std::time::Instant::now();
         // Evaluate the grouping expressions
         let group_by_values = evaluate_group_by(&self.group_by, &batch)?;
 
@@ -227,12 +231,14 @@ impl GroupedHashAggregateStream {
             }
         }
 
-        match self.update_memory_reservation() {
+        let res = match self.update_memory_reservation() {
             // Here we can ignore `insufficient_capacity_err` because we will spill later,
             // but at least one batch should fit in the memory
             Err(DataFusionError::ResourcesExhausted(_)) => Ok(()),
             other => other,
-        }
+        };
+        self.total_times += start_time.elapsed().as_micros() as i64;
+        res
     }
 
     fn update_memory_reservation(&mut self) -> Result<()> {
@@ -247,6 +253,7 @@ impl GroupedHashAggregateStream {
     /// Create an output RecordBatch with the group keys and
     /// accumulator states/values specified in emit_to
     fn emit(&mut self, emit_to: EmitTo) -> Result<Option<RecordBatch>> {
+        let start_time = std::time::Instant::now();
         let schema = self.schema();
         if self.group_values.is_empty() {
             return Ok(None);
@@ -264,6 +271,7 @@ impl GroupedHashAggregateStream {
         let _ = self.update_memory_reservation();
         let batch = RecordBatch::try_new(schema, output)?;
         debug_assert!(batch.num_rows() > 0);
+        self.total_times += start_time.elapsed().as_micros() as i64;
         Ok(Some(batch))
     }
 
@@ -301,5 +309,9 @@ impl GroupedHashAggregateStream {
         self.exec_state = ExecutionState::Done;
         self.clear_all();
         Ok(batch)
+    }
+
+    pub fn get_total_times(&self) -> i64 {
+        self.total_times
     }
 }
