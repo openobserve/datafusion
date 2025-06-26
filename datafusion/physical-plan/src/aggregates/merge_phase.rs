@@ -298,6 +298,7 @@ impl GroupedHashAggregateStream {
             ExecutionState::ProducingOutput(batch) => batch.clone(),
             _ => panic!("Not producing output"),
         };
+        self.exec_state = ExecutionState::Done;
         self.clear_all();
         Ok(batch)
     }
