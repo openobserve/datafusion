@@ -27,7 +27,6 @@ use crate::{aggregates, PhysicalExpr};
 use arrow::array::*;
 use arrow::datatypes::SchemaRef;
 use datafusion_common::Result;
-use datafusion_execution::TaskContext;
 use datafusion_expr::{EmitTo, GroupsAccumulator};
 use datafusion_physical_expr::GroupsAccumulatorAdapter;
 
@@ -100,7 +99,7 @@ pub struct GroupedHashAggregateStream {
 
 impl GroupedHashAggregateStream {
     /// Create a new GroupedHashAggregateStream
-    pub fn new(agg: &AggregateExec, _context: Arc<TaskContext>) -> Result<Self> {
+    pub fn new(agg: &AggregateExec) -> Result<Self> {
         debug!("Creating GroupedHashAggregateStream");
         let agg_schema = agg.input().schema();
         let agg_group_by = agg.group_by.clone();
