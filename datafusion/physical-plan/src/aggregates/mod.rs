@@ -52,7 +52,9 @@ use datafusion_physical_expr_common::physical_expr::fmt_sql;
 use itertools::Itertools;
 
 pub(crate) mod group_values;
+pub mod merge_phase;
 mod no_grouping;
+pub mod no_grouping_merge_phase;
 pub mod order;
 mod row_hash;
 mod topk;
